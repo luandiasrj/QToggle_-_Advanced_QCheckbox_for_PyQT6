@@ -1,5 +1,6 @@
 """
 Author: Luan Dias - https://github.com/luandiasrj
+Url: https://github.com/luandiasrj/QToggle_-_Advanced_QCheckbox_for_PyQT6
 
 This code implements a custom QToggle class, which is a toggle switch derived
 from QCheckBox. The QToggle class features customizable colors, and properties.
