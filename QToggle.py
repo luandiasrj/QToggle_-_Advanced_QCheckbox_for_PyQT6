@@ -17,6 +17,7 @@ The custom properties include:
 Main functions and methods in the class include:
 
     init: Initializes the QToggle object with default colors and settings
+    setDuration: Set the duration for the animation
     update_pos_color: Updates the circle position and background color
     start_transition: Starts the transition animation when the state changes
     create_animation: Creates the circle position animation
@@ -60,8 +61,9 @@ class QToggle(QCheckBox):
             QColor("#DDD"), QColor('#777'), QColor("#CCC"), QColor("#000")
         self._circle_pos, self._intermediate_bg_color = None, None
         self.setFixedHeight(18)
+        self._animation_duration = 500  # milliseconds
         self.stateChanged.connect(self.start_transition)
-        self.update_pos_color()
+        self._user_checked = False  # Introduced flag to check user-initiated changes
 
     circle_pos = pyqtProperty(
         float, lambda self: self._circle_pos,
@@ -70,9 +72,14 @@ class QToggle(QCheckBox):
         QColor, lambda self: self._intermediate_bg_color,
         lambda self, col: setattr(self, '_intermediate_bg_color', col))
 
+    def setDuration(self, duration: int):
+        """
+        Set the duration for the animation.
+        :param duration: Duration in milliseconds.
+        """
+        self._animation_duration = duration
+
     def update_pos_color(self, checked=None):
-        if checked is None:
-            checked = self.isChecked()
         self._circle_pos = self.height() * (1.1 if checked else 0.1)
         if self.isChecked():
             self._intermediate_bg_color = self._active_color
@@ -80,9 +87,17 @@ class QToggle(QCheckBox):
             self._intermediate_bg_color = self._bg_color
 
     def start_transition(self, state):
+        if not self._user_checked:  # Skip animation if change isn't user-initiated
+            self.update_pos_color(state)
+            return
         for anim in [self.create_animation, self.create_bg_color_animation]:
             animation = anim(state)
             animation.start()
+        self._user_checked = False  # Reset the flag after animation starts
+
+    def mousePressEvent(self, event):
+        self._user_checked = True  # Set flag when user manually clicks the toggle
+        super().mousePressEvent(event)
 
     def create_animation(self, state):
         return self._create_common_animation(
@@ -95,16 +110,17 @@ class QToggle(QCheckBox):
     def _create_common_animation(self, state, prop, start_val, end_val):
         animation = QPropertyAnimation(self, prop, self)
         animation.setEasingCurve(QEasingCurve.Type.InOutCubic)
-        animation.setDuration(500)
+        animation.setDuration(self._animation_duration)
         animation.setStartValue(start_val if state else end_val)
         animation.setEndValue(end_val if state else start_val)
         return animation
 
     def showEvent(self, event):
-        self.update_pos_color()
+        super().showEvent(event)  # Ensure to call the super class's implementation
+        self.update_pos_color(self.isChecked())
 
     def resizeEvent(self, event):
-        self.update_pos_color()
+        self.update_pos_color(self.isChecked())
 
     def sizeHint(self):
         size = super().sizeHint()
@@ -169,7 +185,7 @@ if __name__ == '__main__':
     layout.addWidget(checkbox1)
 
     checkbox2 = QToggle()
-    checkbox2.setText('Checkbox 2 - Custom height, colors and font')
+    checkbox2.setText('Checkbox 2 - Checked, custom height, animation duration, colors and font')
     checkbox2.setFixedHeight(24)
     checkbox2.setFont(QFont('Segoe Print', 10))
     checkbox2.setStyleSheet("QToggle{"
@@ -178,6 +194,8 @@ if __name__ == '__main__':
                             "qproperty-active_color:#AAF;"
                             "qproperty-disabled_color:#777;"
                             "qproperty-text_color:#A0F;}")
+    checkbox2.setDuration(2000)
+    checkbox2.setChecked(True)
     layout.addWidget(checkbox2)
 
     window.setLayout(layout)
